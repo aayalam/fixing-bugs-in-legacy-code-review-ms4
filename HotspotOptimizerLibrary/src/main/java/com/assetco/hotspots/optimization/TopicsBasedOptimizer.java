@@ -1,5 +1,6 @@
 package com.assetco.hotspots.optimization;
 
+import com.assetco.hotspots.optimization.*;
 import com.assetco.search.results.*;
 
 import java.util.*;
@@ -22,8 +23,6 @@ class TopicsBasedOptimizer {
             if (hotTopics.size() == 0)
                 hotTopicsSource.getTopics().forEach(hotTopics::add);
 
-            if (getHottestTopicIn(asset, hotTopics) != null)
-                searchResults.getHotspot(Highlight).addMember(asset);
 
             if (hotTopic == null)
                 hotTopic = getHottestTopicIn(asset, hotTopics);
@@ -49,6 +48,13 @@ class TopicsBasedOptimizer {
         }
 
         var showcase = searchResults.getHotspot(Showcase);
+
+
+        for (var asset : searchResults.getFound())
+            if (getHottestTopicIn(asset, hotTopics) != null)
+                searchResults.getHotspot(Highlight).addMember(asset);
+
+        
         boolean result = false;
         for (var asset : showcaseAssets) {
             showcase.addMember(asset);

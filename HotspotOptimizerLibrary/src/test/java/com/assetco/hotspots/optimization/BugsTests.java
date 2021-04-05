@@ -15,7 +15,9 @@ public class BugsTests {
     private final int maximumShowcaseItems = 5;
     private SearchResults searchResults;
     private AssetVendor partnerVendor;
+    private AssetVendor basicVendor;
     private SearchResultHotspotOptimizer optimizer;
+    int topicId = 0;
 
     @Test
     public void prevailingPartnerReceivesFirstFiveItemsInShowcase() {
@@ -29,11 +31,26 @@ public class BugsTests {
         thenHotspotHasExactly(Showcase, expected);
     }
 
+    @Test
+    public void allItemsDeservingHighlightAreHighlighted() {
+        AssetTopic moreHotTopic = makeTopic();
+        AssetTopic lessHotTopic = makeTopic();
+        setHotTopics(moreHotTopic, lessHotTopic);
+        var expectedAssets = givenAssetsWithTopics(basicVendor, 2, lessHotTopic);
+        givenAssetsWithTopics(basicVendor, 3, moreHotTopic);
+        expectedAssets.add(givenAssetWithTopics(basicVendor, lessHotTopic));
+
+        whenOptimize();
+
+        thenHotspotHas(Highlight, expectedAssets);
+    }
+
     @BeforeEach
     public void setUp() {
         optimizer = new SearchResultHotspotOptimizer();
         searchResults = new SearchResults();
         partnerVendor = makeVendor(Partner);
+        basicVendor = makeVendor(Basic);
     }
 
     private AssetVendor makeVendor(AssetVendorRelationshipLevel relationshipLevel) {
@@ -77,7 +94,43 @@ public class BugsTests {
     }
 
     private void thenHotspotDoesNotHave(HotspotKey key, Asset... forbidden) {
+        thenHotspotDoesNotHave(key, Arrays.asList(forbidden));
+    }
+
+    private List<Asset> givenAssetsWithTopics(AssetVendor vendor, int count, AssetTopic... topics) {
+        var result = new ArrayList<Asset>();
+        for (var i = 0; i < count; ++i)
+            result.add(givenAssetWithTopics(vendor, topics));
+
+        return result;
+    }
+
+    private Asset givenAssetWithTopics(AssetVendor vendor, AssetTopic... topics) {
+        var actualTopics = new ArrayList<AssetTopic>();
+        for (var topic : topics)
+            actualTopics.add(new AssetTopic(topic.getId(), topic.getDisplayName()));
+
+        var result = new Asset(null, null, null, null, getPurchaseInfo(), getPurchaseInfo(), actualTopics, vendor);
+        searchResults.addFound(result);
+        return result;
+    }
+
+    private AssetTopic makeTopic() {
+        return new AssetTopic("id-" + (++topicId), "anything");
+    }
+
+    private void setHotTopics(AssetTopic... topics) {
+        optimizer.setHotTopics(() -> Arrays.asList(topics));
+    }
+
+    private void thenHotspotDoesNotHave(HotspotKey key, List<Asset> forbidden) {
         for (var asset : forbidden)
             assertFalse(searchResults.getHotspot(key).getMembers().contains(asset));
+    }
+
+    private void thenHotspotHas(HotspotKey hotspotKey, List<Asset> expectedAssets) {
+        for (var expectedAsset : expectedAssets) {
+            Assertions.assertTrue(searchResults.getHotspot(hotspotKey).getMembers().contains(expectedAsset));
+        }
     }
 }
